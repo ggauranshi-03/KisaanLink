@@ -1,0 +1,208 @@
+version: '2'
+
+networks:
+  basic:
+
+services:
+  ca.example.com:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.example.com
+      # - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.example.com-cert.pem
+      # - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/priv_sk
+    ports:
+      - "7054:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw'
+    volumes:
+      - ./crypto-config/peerOrganizations/admin.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
+      - ./crypto-config/peerOrganizations/zoneinspector.example.com/ca/:/etc/hyperledger/fabric-ca-server-config-zoneinspector
+      - ./crypto-config/peerOrganizations/operationmanager.example.com/ca/:/etc/hyperledger/fabric-ca-server-config-operationmanager
+      - ./crypto-config/peerOrganizations/fieldinspector.example.com/ca/:/etc/hyperledger/fabric-ca-server-config-fieldinspector
+    container_name: ca.example.com
+    networks:
+      - basic
+
+  orderer.example.com:
+    container_name: orderer.example.com
+    image: hyperledger/fabric-orderer
+    environment:
+      - FABRIC_LOGGING_SPEC=info
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/etc/hyperledger/configtx/genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/msp/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=./crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=./crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=./crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt
+
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+    command: orderer
+    ports:
+      - 7050:7050
+    volumes:
+        - ./config/:/etc/hyperledger/configtx
+        - ./crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/:/etc/hyperledger/msp/orderer
+        - ./crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls
+        - ./crypto-config/peerOrganizations/admin.example.com/peers/peer0.admin.example.com/:/etc/hyperledger/msp/admin
+        - ./crypto-config/peerOrganizations/zoneinspector.example.com/peers/peer0.zoneinspector.example.com/:/etc/hyperledger/msp/zoneinspector
+        - ./crypto-config/peerOrganizations/operationmanager.example.com/peers/peer0.operationmanager.example.com/:/etc/hyperledger/msp/operationmanager
+        - ./crypto-config/peerOrganizations/fieldinspector.example.com/peers/peer0.fieldinspector.example.com/:/etc/hyperledger/msp/fieldinspector
+    networks:
+      - basic
+
+  peer0.admin.example.com:
+    container_name: peer0.admin.example.com
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_ID=peer0.admin.example.com
+      - FABRIC_LOGGING_SPEC=info
+      - CORE_CHAINCODE_LOGGING_LEVEL=info
+      - CORE_PEER_LOCALMSPID=AdminMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/admin/
+      - CORE_PEER_ADDRESS=peer0.admin.example.com:7051
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_basic
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb:5984
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: peer node start
+    ports:
+      - "7055:7051"
+      - "7056:7053"
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/admin.example.com/peers/peer0.admin.example.com/msp:/etc/hyperledger/msp/admin
+        - ./crypto-config/peerOrganizations/admin.example.com/users:/etc/hyperledger/msp/users
+        - ./config:/etc/hyperledger/configtx
+    depends_on:
+      - orderer.example.com
+      - couchdb
+    networks:
+      - basic
+
+  peer0.zoneinspector.example.com:
+    container_name: peer0.zoneinspector.example.com
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_ID=peer0.zoneinspector.example.com
+      - FABRIC_LOGGING_SPEC=info
+      - CORE_CHAINCODE_LOGGING_LEVEL=info
+      - CORE_PEER_LOCALMSPID=ZoneInspectorMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/zoneinspector/
+      - CORE_PEER_ADDRESS=peer0.zoneinspector.example.com:7051
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_basic
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb:5984
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: peer node start
+    ports:
+      - 7051:7051
+      - 7053:7053
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/zoneinspector.example.com/peers/peer0.zoneinspector.example.com/msp:/etc/hyperledger/msp/zoneinspector
+        - ./crypto-config/peerOrganizations/zoneinspector.example.com/users:/etc/hyperledger/msp/users
+        - ./config:/etc/hyperledger/configtx
+    depends_on:
+      - orderer.example.com
+      - couchdb
+    networks:
+      - basic
+
+  peer0.operationmanager.example.com:
+    container_name: peer0.operationmanager.example.com
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_ID=peer0.operationmanager.example.com
+      - FABRIC_LOGGING_SPEC=info
+      - CORE_CHAINCODE_LOGGING_LEVEL=info
+      - CORE_PEER_LOCALMSPID=OperationManagerMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/operationmanager/
+      - CORE_PEER_ADDRESS=peer0.operationmanager.example.com:7051
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_basic
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb:5984
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: peer node start
+    ports:
+      - 8051:7051
+      - 8053:7053
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/operationmanager.example.com/peers/peer0.operationmanager.example.com/msp:/etc/hyperledger/msp/operationmanager
+        - ./crypto-config/peerOrganizations/operationmanager.example.com/users:/etc/hyperledger/msp/users
+        - ./config:/etc/hyperledger/configtx
+    depends_on:
+      - orderer.example.com
+      - couchdb
+    networks:
+      - basic
+
+  peer0.fieldinspector.example.com:
+    container_name: peer0.fieldinspector.example.com
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_ID=peer0.fieldinspector.example.com
+      - FABRIC_LOGGING_SPEC=info
+      - CORE_CHAINCODE_LOGGING_LEVEL=info
+      - CORE_PEER_LOCALMSPID=FieldInspectorMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/fieldinspector/
+      - CORE_PEER_ADDRESS=peer0.fieldinspector.example.com:7051
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_basic
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb:5984
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: peer node start
+    ports:
+      - 9051:7051
+      - 9053:7053
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/fieldinspector.example.com/peers/peer0.fieldinspector.example.com/msp:/etc/hyperledger/msp/fieldinspector
+        - ./crypto-config/peerOrganizations/fieldinspector.example.com/users:/etc/hyperledger/msp/users
+        - ./config:/etc/hyperledger/configtx
+    depends_on:
+      - orderer.example.com
+      - couchdb
+    networks:
+      - basic
+
+  couchdb:
+    container_name: couchdb
+    image: hyperledger/fabric-couchdb
+    environment:
+      - COUCHDB_USER=
+      - COUCHDB_PASSWORD=
+    ports:
+      - 5984:5984
+    networks:
+      - basic
+
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-tools
+    tty: true
+    environment:
+      - GOPATH=/opt/gopath
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - FABRIC_LOGGING_SPEC=info
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS=peer0.admin.example.com:7051
+      - CORE_PEER_LOCALMSPID=AdminMSP
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/admin.example.com/users/Admin@admin.example.com/msp
+      - CORE_CHAINCODE_KEEPALIVE=10
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/bash
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./../chaincode/:/opt/gopath/src/github.com/
+        - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
+    networks:
+        - basic
+

@@ -1,0 +1,246 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+################################################################################
+#
+#   Section: Organizations
+#
+#   - This section defines the different organizational identities which will
+#   be referenced later in the configuration.
+#
+################################################################################
+Organizations:
+    - &OrdererOrg
+        Name: OrdererOrg
+        ID: OrdererMSP
+        MSPDir: crypto-config/ordererOrganizations/example.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrdererMSP.admin')"
+        AnchorPeers:
+            - Host: orderer
+              Port: 7051
+
+    - &AdminOrg
+        Name: AdminOrg
+        ID: AdminMSP
+        MSPDir: crypto-config/peerOrganizations/admin.example.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('AdminMSP.admin', 'AdminMSP.peer', 'AdminMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('AdminMSP.admin', 'AdminMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('AdminMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('AdminMSP.peer')"
+
+        AnchorPeers:
+            - Host: peer0.admin.example.com
+              Port: 7051
+
+    - &ZoneInspectorOrg
+        Name: ZoneInspectorOrg
+        ID: ZoneInspectorMSP
+        MSPDir: crypto-config/peerOrganizations/zoneinspector.example.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('ZoneInspectorMSP.admin', 'ZoneInspectorMSP.peer', 'ZoneInspectorMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('ZoneInspectorMSP.admin', 'ZoneInspectorMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('ZoneInspectorMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('ZoneInspectorMSP.peer')"
+
+        AnchorPeers:
+            - Host: peer0.zoneinspector.example.com
+              Port: 7051
+
+    - &OperationManagerOrg
+        Name: OperationManagerOrg
+        ID: OperationManagerMSP
+        MSPDir: crypto-config/peerOrganizations/operationmanager.example.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OperationManagerMSP.admin', 'OperationManagerMSP.peer', 'OperationManagerMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OperationManagerMSP.admin', 'OperationManagerMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OperationManagerMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('OperationManagerMSP.peer')"
+
+        AnchorPeers:
+            - Host: peer0.operationmanager.example.com
+              Port: 7051
+
+    - &FieldInspectorOrg
+        Name: FieldInspectorOrg
+        ID: FieldInspectorMSP
+        MSPDir: crypto-config/peerOrganizations/fieldinspector.example.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('FieldInspectorMSP.admin', 'FieldInspectorMSP.peer', 'FieldInspectorMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('FieldInspectorMSP.admin', 'FieldInspectorMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('FieldInspectorMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('FieldInspectorMSP.peer')"
+
+        AnchorPeers:
+            - Host: peer0.fieldinspector.example.com
+              Port: 7051
+
+Capabilities:
+    Channel: &ChannelCapabilities
+        # V2_0 capability ensures that orderers and peers behave according
+        # to v2.0 channel capabilities. Orderers and peers from
+        # prior releases would behave in an incompatible way, and are therefore
+        # not able to participate in channels at v2.0 capability.
+        # Prior to enabling V2.0 channel capabilities, ensure that all
+        # orderers and peers on a channel are at v2.0.0 or later.
+        V2_0: true
+    Global: &GlobalCapabilities
+        V1_4_2: true
+    Orderer: &OrdererCapabilities
+        V1_4_2: true
+    Application: &ApplicationCapabilities
+        V1_4_2: true
+
+Application: &ApplicationDefaults
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        LifecycleEndorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+        Endorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+
+Orderer: &OrdererDefaults
+    OrdererType: etcdraft
+    Addresses:
+        - orderer.example.com:7050
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 99 MB
+        PreferredMaxBytes: 512 KB
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+    # Policies defines the set of policies at this level of the config tree
+    # For Channel policies, their canonical path is
+    #   /Channel/<PolicyName>
+    Policies:
+        # Who may invoke the 'Deliver' API
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        # Who may invoke the 'Broadcast' API
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        # By default, who may modify elements at this config level
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+
+    # Capabilities describes the channel level capabilities, see the
+    # dedicated Capabilities section elsewhere in this file for a full
+    # description
+    Capabilities:
+        <<: *ChannelCapabilities
+
+Profiles:
+    
+    FourOrgsOrdererGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: etcdraft
+            Addresses:
+                - orderer.example.com:7050
+            EtcdRaft:
+                Consenters:
+                    - Host: orderer.example.com
+                      Port: 7050
+                      ClientTLSCert: ./crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+                      ServerTLSCert: ./crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+            BatchTimeout: 2s
+            BatchSize:
+                MaxMessageCount: 10
+                AbsoluteMaxBytes: 99 MB
+                PreferredMaxBytes: 512 KB
+            Organizations:
+                - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *AdminOrg
+                    - *ZoneInspectorOrg
+                    - *OperationManagerOrg
+                    - *FieldInspectorOrg
+    FourOrgsChannel:
+        Consortium: SampleConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *AdminOrg
+                - *ZoneInspectorOrg
+                - *OperationManagerOrg
+                - *FieldInspectorOrg
+            Capabilities:
+                <<: *ApplicationCapabilities
